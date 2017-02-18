@@ -71,7 +71,6 @@ struct my_signal<void(Params...)>
         if (!entrancy) {
             if (is_small()) {
                 if (count == 1) {
-                    slots = std::list<ptr_t>();
                     slots.emplace_back(small);
                     slots.push_back(ptr);
                 } else {
