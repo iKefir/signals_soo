@@ -80,8 +80,12 @@ struct my_signal<void(Params...)>
     }
     
     void disconnect_all_slots() {
-        for (auto& conn : slots) {
-            conn -> disconnect();
+        if (is_small()) {
+            small -> disconnect();
+        } else {
+            for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
+                (*it) -> disconnect();
+            }
         }
     }
     

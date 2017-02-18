@@ -28,12 +28,19 @@ int main() {
     auto conn3 = sig.connect(&FunctionSlot);
     auto conn2 = sig.connect(FunctionObjectSlot());
     
+    auto conn1 = sig.connect([]() { std::cout<<"Anonymous function is called"<<std::endl; });
+    
     MethodSlotClass methodSlotObject;
     auto conn = sig.connect(std::bind(&MethodSlotClass::MethodSlot, &methodSlotObject));
     
     sig();
-    
+
     conn.disconnect();
+    
+    std::cout << std::endl;
+    sig();
+    
+    conn1.disconnect();
     
     std::cout << std::endl;
     sig();
@@ -47,7 +54,4 @@ int main() {
     
     std::cout << std::endl;
     sig();
-    
-    conn3.disconnect();
-    
 }
