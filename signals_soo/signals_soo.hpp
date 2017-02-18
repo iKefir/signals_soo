@@ -106,7 +106,8 @@ struct my_signal<void(Params...)>
                 }
             for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
                 if (!(*it) -> is_connected()) {
-                    (*slots).erase(it);
+                    it = (*slots).erase(it);
+                    if (it != (*slots).begin()) --it;
                     --count;
                 }
             }
