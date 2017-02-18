@@ -44,57 +44,76 @@ struct my_signal<void(Params...)>
     
     struct connection
     {
-        connection(ptr_t ptr)
-        : pointer(ptr)
+        connection(my_signal* par, ptr_t ptr)
+        : parent(par), pointer(ptr)
         {}
         
         void disconnect()
         {
-            pointer -> disconnect();
+            parent -> do_disconnect(pointer);
         }
         
     private:
+        my_signal* parent;
         ptr_t pointer;
     };
     
     my_signal()
-    : count(0), small(), slots()
-    {}
+    : count(0), small(), slots(), entrancy(false)
+    {
+        to_add = std::make_shared<std::list<ptr_t>>();
+        to_rm  = std::make_shared<std::list<ptr_t>>();
+    }
     
     connection connect(slot_t slot)
     {
         ptr_t ptr = std::make_shared<connection_item>(this, slot, true);
-        if (is_small()) {
-            if (count == 1) {
-                slots = std::make_shared<std::list<ptr_t>>();
-                (*slots).emplace_back(small);
-                (*slots).push_back(ptr);
+        if (!entrancy) {
+            if (is_small()) {
+                if (count == 1) {
+                    slots = std::make_shared<std::list<ptr_t>>();
+                    (*slots).emplace_back(small);
+                    (*slots).push_back(ptr);
+                } else {
+                    small = ptr;
+                }
             } else {
-                small = ptr;
+                (*slots).push_back(ptr);
             }
+            ++count;
         } else {
-            (*slots).push_back(ptr);
+            (*to_add).push_back(ptr);
         }
-        ++count;
-        return connection(ptr);
+        return connection(this, ptr);
     }
+    
     
     void disconnect_all_slots() {
         if (is_small()) {
-            small -> disconnect();
+            do_disconnect(small);
         } else {
             for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
-                (*it) -> disconnect();
+                do_disconnect((*it));
             }
+        }
+    }
+    
+    void do_disconnect(ptr_t ptr) {
+        if (!entrancy) {
+            ptr -> disconnect();
+        } else {
+            (*to_rm).push_back(ptr);
         }
     }
     
     void operator()(Params...p)
     {
+        bool prev_entrancy = entrancy;
+        entrancy = true;
         if (is_small()) {
             if (count == 1) {
                 if ((*small).is_connected()) {
-                    (*small)(p...);
+                    (*small)(std::forward<Params>(p)...);
                 } else {
                     --count;
                 }
@@ -102,7 +121,7 @@ struct my_signal<void(Params...)>
         } else {
             for (auto it = (*slots).cbegin(); it != (*slots).cend(); it++)
                 if ((*it) -> is_connected()) {
-                    (*(*it))(p...);
+                    (*(*it))(std::forward<Params>(p)...);
                 }
             for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
                 if (!(*it) -> is_connected()) {
@@ -116,6 +135,19 @@ struct my_signal<void(Params...)>
                 slots.reset();
             }
         }
+        entrancy = prev_entrancy;
+        
+        for (auto it = (*to_rm).begin(); it != (*to_rm).end(); it++) {
+            (*it) -> disconnect();
+        }
+        
+        (*to_rm).clear();
+        
+        for (auto it = (*to_add).begin(); it != (*to_add).end(); it++) {
+            (*slots).emplace_back(std::move(*it));
+        }
+        
+        (*to_add).clear();
     }
     
     inline bool is_small() const {
@@ -125,7 +157,11 @@ struct my_signal<void(Params...)>
 private:
     id_t count;
     ptr_t small;
+    bool entrancy;
     std::shared_ptr<std::list<ptr_t>> slots;
+    
+    std::shared_ptr<std::list<ptr_t>> to_add;
+    std::shared_ptr<std::list<ptr_t>> to_rm;
     
 };
 
