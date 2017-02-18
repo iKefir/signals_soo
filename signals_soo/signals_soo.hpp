@@ -71,14 +71,14 @@ struct my_signal<void(Params...)>
         if (!entrancy) {
             if (is_small()) {
                 if (count == 1) {
-                    slots = std::make_shared<std::list<ptr_t>>();
-                    (*slots).emplace_back(small);
-                    (*slots).push_back(ptr);
+                    slots = std::list<ptr_t>();
+                    slots.emplace_back(small);
+                    slots.push_back(ptr);
                 } else {
                     small = ptr;
                 }
             } else {
-                (*slots).push_back(ptr);
+                slots.push_back(ptr);
             }
             ++count;
         } else {
@@ -92,7 +92,7 @@ struct my_signal<void(Params...)>
         if (is_small()) {
             do_disconnect(small);
         } else {
-            for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
+            for (auto it = slots.begin(); it != slots.end(); it++) {
                 do_disconnect((*it));
             }
         }
@@ -119,20 +119,20 @@ struct my_signal<void(Params...)>
                 }
             }
         } else {
-            for (auto it = (*slots).cbegin(); it != (*slots).cend(); it++)
+            for (auto it = slots.cbegin(); it != slots.cend(); it++)
                 if ((*it) -> is_connected()) {
                     (*(*it))(std::forward<Params>(p)...);
                 }
-            for (auto it = (*slots).begin(); it != (*slots).end(); it++) {
+            for (auto it = slots.begin(); it != slots.end(); it++) {
                 if (!(*it) -> is_connected()) {
-                    it = (*slots).erase(it);
-                    if (it != (*slots).begin()) --it;
+                    it = slots.erase(it);
+                    if (it != slots.begin()) --it;
                     --count;
                 }
             }
             if (count == 1) {
-                small = (*slots).front();
-                slots.reset();
+                small = slots.front();
+                slots.clear();
             }
         }
         entrancy = prev_entrancy;
@@ -144,7 +144,7 @@ struct my_signal<void(Params...)>
         to_rm.clear();
         
         for (auto it = to_add.begin(); it != to_add.end(); it++) {
-            (*slots).emplace_back(std::move(*it));
+            slots.emplace_back(std::move(*it));
         }
         
         to_add.clear();
@@ -158,7 +158,7 @@ private:
     id_t count;
     ptr_t small;
     bool entrancy;
-    std::shared_ptr<std::list<ptr_t>> slots;
+    std::list<ptr_t> slots;
     
     std::list<ptr_t> to_add;
     std::list<ptr_t> to_rm;
