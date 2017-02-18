@@ -28,7 +28,7 @@ int main() {
     auto conn3 = sig.connect(&FunctionSlot);
     auto conn2 = sig.connect(FunctionObjectSlot());
     
-    auto conn1 = sig.connect([]() { std::cout<<"Anonymous function is called"<<std::endl; });
+    auto conn1 = sig.connect([&sig]() { sig.connect(&FunctionSlot); });
     
     MethodSlotClass methodSlotObject;
     auto conn = sig.connect(std::bind(&MethodSlotClass::MethodSlot, &methodSlotObject));
